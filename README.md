@@ -1,1 +1,610 @@
-vote
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የውድድር ድምጽ መስጫ መድረክ</title>
+    <!-- Tailwind CSS - ለላቀና ውብ ዲዛይን -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome - ለፕሮፌሽናል ምልክቶች (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase Compat SDKs (ደህንነቱ የተጠበቀ ስሪት) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght=300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans Ethiopic', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-800">
+
+    <!-- የላይኛው ራስጌ (Header) -->
+    <header class="bg-gradient-to-r from-blue-800 to-indigo-950 text-white shadow-xl">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold tracking-wide flex items-center gap-2">
+                <i class="fa-solid fa-square-poll-vertical text-amber-400"></i>
+                የቀጥታ ድምጽ መስጫ መድረክ
+            </h1>
+            <button onclick="openAdminModal()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-semibold transition duration-200 flex items-center gap-2 border border-white/10">
+                <i class="fa-solid fa-lock-open text-amber-400"></i> የአድሚን ገጽ
+            </button>
+        </div>
+    </header>
+
+    <!-- የዲሞ / የቀጥታ ሁነታ ማሳወቂያ ባነር -->
+    <div id="statusBanner" class="bg-amber-100 border-b border-amber-200 text-amber-800 text-center py-2.5 px-4 text-xs md:text-sm font-semibold flex justify-center items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation text-amber-600 animate-pulse text-base"></i>
+        ድረ-ገጹ በሙከራ (Demo Mode) ላይ ነው! ከፋየርቤዝ ጋር ለማገናኘት አድሚን ገጽ ውስጥ የኮንፊግ ኮድዎን ያስገቡ።
+    </div>
+
+    <!-- ዋናው ይዘት (Main Body) -->
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full">
+        
+        <!-- ትልቁ የሽልማት ማስታወቂያ (Banner) -->
+        <div class="bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 rounded-2xl p-6 md:p-10 text-center text-slate-900 shadow-lg mb-12 relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 text-white/15 text-9xl font-bold">🏆</div>
+            <span class="bg-slate-900 text-amber-400 text-xs uppercase font-extrabold px-3 py-1.5 rounded-full tracking-wider">ልዩ የፎቶ ውድድር</span>
+            <h2 class="text-2xl md:text-4xl font-black mt-4 leading-tight">
+                🏆 ውድድሩን ያሸነፈ 100,000 ብር ይሸለማል! 🏆
+            </h2>
+            <p class="text-slate-800 font-medium mt-3 text-sm md:text-base">ከታች ካሉት 3 ተወዳዳሪዎች መካከል የሚመርጡትን በመጫን ድምጽዎን ይስጡ!</p>
+        </div>
+
+        <!-- የተወዳዳሪዎች ክፍል -->
+        <section class="mb-16">
+            <h3 class="text-center text-xl md:text-2xl font-bold text-gray-800 mb-8 flex justify-center items-center gap-2">
+                <i class="fa-solid fa-users text-blue-600"></i> ተወዳዳሪዎች
+            </h3>
+
+            <!-- 3 የተወዳዳሪዎች ካርዶች -->
+            <div id="contestantsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center max-w-5xl mx-auto">
+                <div class="flex justify-center py-10 col-span-3">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ድምጽ መስጫ ፎርም -->
+        <section class="max-w-md mx-auto bg-white rounded-2xl p-6 md:p-8 shadow-md border border-gray-100 mb-10">
+            <div class="text-center mb-6">
+                <span class="inline-flex p-3 rounded-full bg-blue-50 text-blue-600 mb-2">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                </span>
+                <h3 class="text-lg font-bold text-gray-800">ለመምረጥ መረጃዎን ያስገቡ</h3>
+                <p class="text-xs text-gray-500 mt-1">እባክዎ ለመምረጥ የተጠቃሚ ስምና የይለፍ ቃል ያስገቡ!</p>
+            </div>
+
+            <form id="voteForm" onsubmit="handleVoteSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">የተጠቃሚ ስም (Username)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="voterName" required placeholder="የተጠቃሚ ስምዎን ያስገቡ" 
+                            class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">የይለፍ ቃል (Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="text" id="voterPhone" required placeholder="የይለፍ ቃልዎን ያስገቡ" 
+                            class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm transition-all">
+                    </div>
+                </div>
+
+                <!-- የተመረጠው ሰው ስም ማሳያ -->
+                <div id="selectionPreview" class="hidden bg-blue-50 border border-blue-100 p-3.5 rounded-xl flex items-center justify-between text-xs text-blue-800 animate-fadeIn">
+                    <span id="previewText" class="font-semibold"></span>
+                    <button type="button" onclick="clearSelection()" class="text-red-500 hover:text-red-700 font-bold px-2">አጥፋ</button>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl shadow-md transition duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check-to-slot"></i> ውሳኔዬን አረጋግጣለሁ (Vote Now)
+                </button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- ገጽ ግርጌ (Footer) -->
+    <footer class="bg-slate-950 text-white py-6 border-t border-slate-900 text-center text-xs text-slate-400">
+        <p>© 2026 የቀጥታ ድምጽ መስጫ መድረክ። መብቱ በህግ የተጠበቀ ነው።</p>
+    </footer>
+
+    <!-- የስኬት ወይም የስህተት መልዕክት ማሳያ (Toast) -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 max-w-sm w-full bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3">
+        <span id="toastIcon" class="text-xl"></span>
+        <p id="toastMessage" class="text-xs md:text-sm font-semibold"></p>
+    </div>
+
+    <!-- የአድሚን ገጽ ሞዳል (Admin Modal) -->
+    <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-gears text-amber-400"></i> የአስተዳዳሪ ክፍል (Admin Dashboard)
+                </h3>
+                <button onclick="closeAdminModal()" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- መግቢያ ገጽ (Password Check) -->
+            <div id="adminAuthScreen" class="p-8 text-center flex-grow">
+                <div class="max-w-xs mx-auto space-y-4 py-6">
+                    <span class="inline-flex p-4 rounded-full bg-amber-50 text-amber-500 mb-2">
+                        <i class="fa-solid fa-shield-halved text-3xl"></i>
+                    </span>
+                    <h4 class="font-bold text-gray-800">የአድሚን ይለፍ ቃል ያስገቡ</h4>
+                    <input type="password" id="adminPassword" placeholder="የአድሚን ይለፍ ቃል" 
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-center text-sm transition-all">
+                    <button onclick="checkAdminPassword()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition duration-200">
+                        ግባ
+                    </button>
+                    <p class="text-xs text-gray-400">ማሳሰቢያ፡ ዋናው የይለፍ ቃል <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">admin123</span> ነው</p>
+                </div>
+            </div>
+
+            <!-- የአድሚን ዋና መቆጣጠሪያዎች -->
+            <div id="adminContentScreen" class="hidden flex-grow overflow-y-auto p-6 space-y-8">
+                
+                <!-- Firebase Connection Setup -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                    <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-database text-blue-600"></i> Firebase ማገናኛ (Firebase Config Setup)
+                    </h4>
+                    <p class="text-xs text-slate-500 mb-4">
+                        የፋየርቤዝ ኮንፊግሬሽን ኮድዎን (Firebase Config JSON) ከታች ባለው ሳጥን ውስጥ ለጥፈው ሲያስቀምጡት ድረ-ገጹ በቀጥታ ከእርስዎ እውነተኛ ዳታቤዝ ጋር ይገናኛል!
+                    </p>
+                    <textarea id="firebaseConfigInput" placeholder='{"apiKey": "AIzaSy...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}' 
+                        class="w-full h-32 p-3 font-mono text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"></textarea>
+                    
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="saveFirebaseConfig()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition">
+                            አገናኝ (Save & Connect)
+                        </button>
+                        <button onclick="resetFirebaseConfig()" class="bg-red-500 hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition">
+                            ግንኙነቱን አቋርጥ (Disconnect)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Edit Contestants Info -->
+                <div class="border border-gray-200 rounded-xl p-5">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-user-pen text-amber-500"></i> የተወዳዳሪዎች መረጃ ማስተካከያ
+                    </h4>
+
+                    <div class="space-y-6">
+                        <!-- Contestant 1 Form -->
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <span class="font-bold text-xs text-blue-600">ተወዳዳሪ 1</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <input type="text" id="c1_name" placeholder="ስም" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" id="c1_img" placeholder="የፎቶ ሊንክ (Photo URL)" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Contestant 2 Form -->
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <span class="font-bold text-xs text-blue-600">ተወዳዳሪ 2</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <input type="text" id="c2_name" placeholder="ስም" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" id="c2_img" placeholder="የፎቶ ሊንክ (Photo URL)" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Contestant 3 Form -->
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <span class="font-bold text-xs text-blue-600">ተወዳዳሪ 3</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <input type="text" id="c3_name" placeholder="ስም" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <input type="text" id="c3_img" placeholder="የፎቶ ሊንክ (Photo URL)" class="bg-white px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="saveContestants()" class="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs transition">
+                        ለውጦችን አስቀምጥ
+                    </button>
+                </div>
+
+                <!-- Admin Management (Voter Logs) -->
+                <div class="border border-gray-200 rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-green-600"></i> የድምጽ አሰጣጥ መረጃዎች (Voters Log)
+                        </h4>
+                        <button onclick="resetAllVotesData()" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                            መረጃዎችን በሙሉ አጽዳ (Reset All)
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-gray-600">
+                            <thead class="bg-gray-100 text-gray-700 uppercase">
+                                <tr>
+                                    <th class="p-3">የተጠቃሚ ስም (Username)</th>
+                                    <th class="p-3">ይለፍ ቃል (Password)</th>
+                                    <th class="p-3">የመረጠው ተወዳዳሪ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="voterLogsTable">
+                                <!-- Logs dynamically loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ሎጂክ እና ዳታቤዝ አገናኝ ስክሪፕቶች -->
+    <script>
+        // MOCK DATA (በሙከራ ሁነታ የሚሰሩ ተወዳዳሪዎች)
+        let demoContestants = [
+            { id: "1", name: "ተወዳዳሪ 1", imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400", votes: 12 },
+            { id: "2", name: "ተወዳዳሪ 2", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400", votes: 18 },
+            { id: "3", name: "ተወዳዳሪ 3", imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400", votes: 9 }
+        ];
+
+        // ግሎባል ተለዋዋጮች
+        let isFirebaseLive = false;
+        let db = null;
+        let selectedContestantId = null;
+
+        // መተግበሪያው ሲነሳ የሚሰራ
+        window.onload = function() {
+            initApp();
+        };
+
+        function initApp() {
+            const savedConfig = localStorage.getItem("firebase_config");
+            if (savedConfig) {
+                try {
+                    const parsedConfig = JSON.parse(savedConfig);
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(parsedConfig);
+                    }
+                    db = firebase.firestore();
+                    isFirebaseLive = true;
+                    document.getElementById("statusBanner").classList.add("hidden");
+                    document.getElementById("firebaseConfigInput").value = JSON.stringify(parsedConfig, null, 2);
+                    showToast("🎉 ከእርስዎ የFirebase ዳታቤዝ ጋር በተሳካ ሁኔታ ተገናኝቷል!", "success");
+                } catch (e) {
+                    console.error("Firebase Initialization Error:", e);
+                    showToast("⚠️ የFirebase ኮድዎ ላይ ችግር አለ። በሙከራ ሁነታ ይሰራል!", "error");
+                    isFirebaseLive = false;
+                }
+            } else {
+                isFirebaseLive = false;
+                document.getElementById("statusBanner").classList.remove("hidden");
+            }
+
+            // ተወዳዳሪዎቹን መጫን
+            loadContestants();
+        }
+
+        // መልዕክት ማሳያ (Toast)
+        function showToast(message, type = "info") {
+            const toast = document.getElementById("toast");
+            const toastIcon = document.getElementById("toastIcon");
+            const toastMessage = document.getElementById("toastMessage");
+
+            if (type === "success") {
+                toastIcon.innerHTML = '<i class="fa-solid fa-circle-check text-green-400"></i>';
+            } else if (type === "error") {
+                toastIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+            } else {
+                toastIcon.innerHTML = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+            }
+
+            toastMessage.innerText = message;
+            toast.classList.remove("translate-y-20", "opacity-0");
+            
+            setTimeout(() => {
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 4000);
+        }
+
+        // ተወዳዳሪዎችን መጫን
+        function loadContestants() {
+            if (isFirebaseLive) {
+                // የቀጥታ መረጃ ከFirestore
+                db.collection("contestants").orderBy("name").onSnapshot((snapshot) => {
+                    let contestants = [];
+                    snapshot.forEach((doc) => {
+                        contestants.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    if (contestants.length === 0) {
+                        createInitialFirestoreContestants();
+                    } else {
+                        renderContestants(contestants);
+                    }
+                }, (error) => {
+                    console.error("Firestore Error:", error);
+                    showToast("መረጃዎችን ከዳታቤዝ ማንበብ አልተቻለም።", "error");
+                });
+            } else {
+                // መረጃ ከLocalStorage
+                const localSaved = localStorage.getItem("demo_contestants");
+                if (localSaved) {
+                    demoContestants = JSON.parse(localSaved);
+                }
+                renderContestants(demoContestants);
+            }
+        }
+
+        // ዳታቤዙ ባዶ ከሆነ መጀመሪያ 3 ተወዳዳሪዎችን ይፈጥራል
+        function createInitialFirestoreContestants() {
+            const batch = db.batch();
+            demoContestants.forEach((c) => {
+                let docRef = db.collection("contestants").doc(c.id);
+                batch.set(docRef, {
+                    name: c.name,
+                    imageUrl: c.imageUrl,
+                    votes: 0
+                });
+            });
+            batch.commit().then(() => {
+                console.log("Default contestants added to Firestore");
+            });
+        }
+
+        // ተወዳዳሪዎችን በገጹ ላይ መሳል
+        function renderContestants(contestants) {
+            const grid = document.getElementById("contestantsGrid");
+            grid.innerHTML = "";
+
+            contestants.forEach((c) => {
+                const isSelected = selectedContestantId === c.id;
+                const card = document.createElement("div");
+                card.className = `bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition-all duration-300 ${isSelected ? 'border-blue-600 ring-4 ring-blue-50' : 'border-gray-100 hover:shadow-md'}`;
+                
+                card.innerHTML = `
+                    <div class="relative h-60 bg-gray-50">
+                        <img src="${c.imageUrl}" alt="${c.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Photo'" class="w-full h-full object-cover">
+                        <div class="absolute top-3 right-3 bg-slate-900/70 text-white text-xs px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 backdrop-blur-sm">
+                            <i class="fa-solid fa-square-poll-vertical text-amber-400"></i>
+                            ድምጽ: ${c.votes || 0}
+                        </div>
+                    </div>
+                    <div class="p-5 text-center">
+                        <h4 class="font-bold text-gray-800 text-lg mb-4">${c.name}</h4>
+                        <button onclick="selectContestant('${c.id}', '${c.name}')" 
+                            class="w-full py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                            ${isSelected ? '<i class="fa-solid fa-circle-check"></i> ተመርጧል' : 'ይህንን ምረጥ'}
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ተወዳዳሪ መምረጥ
+        function selectContestant(id, name) {
+            selectedContestantId = id;
+            
+            const preview = document.getElementById("selectionPreview");
+            const previewText = document.getElementById("previewText");
+            previewText.innerHTML = `<i class="fa-solid fa-circle-check text-blue-600"></i> የእርስዎ ምርጫ፦ <span class="underline font-bold">${name}</span>`;
+            preview.classList.remove("hidden");
+
+            loadContestants();
+        }
+
+        function clearSelection() {
+            selectedContestantId = null;
+            document.getElementById("selectionPreview").classList.add("hidden");
+            loadContestants();
+        }
+
+        // ድምጽ መስጫ ቁልፍ ሲጫን (Logic)
+        function handleVoteSubmit(e) {
+            e.preventDefault();
+            const voterName = document.getElementById("voterName").value.trim();
+            const voterPhone = document.getElementById("voterPhone").value.trim(); // Now used as Password
+
+            if (!voterName || !voterPhone) {
+                showToast("እባክዎ የተጠቃሚ ስም እና ይለፍ ቃል ያስገቡ!", "error");
+                return;
+            }
+
+            if (!selectedContestantId) {
+                showToast("እባክዎ መጀመሪያ ድምጽ መስጠት የሚፈልጉትን ተወዳዳሪ ይምረጡ!", "error");
+                return;
+            }
+
+            if (voterPhone.length < 4) {
+                showToast("የይለፍ ቃል ቢያንስ 4 ፊደላት ወይም ቁጥሮች መሆን አለበት!", "error");
+                return;
+            }
+
+            if (isFirebaseLive) {
+                // እውነተኛው የድምጽ አሰጣጥ ቁጥጥር - የተጠቃሚ ስም (Username) የሰነዱ መታወቂያ ይሆናል
+                const voterRef = db.collection("voters").doc(voterName);
+
+                voterRef.get().then((docSnapshot) => {
+                    if (docSnapshot.exists) {
+                        showToast("ይህ የተጠቃሚ ስም ቀድሞ ድምጽ ሰጥቷል! ከአንድ ጊዜ በላይ መምረጥ አይቻልም።", "error");
+                    } else {
+                        // ድምጽ መመዝገብ
+                        db.runTransaction((transaction) => {
+                            const contestantRef = db.collection("contestants").doc(selectedContestantId);
+
+                            return transaction.get(contestantRef).then((conDoc) => {
+                                if (!conDoc.exists) {
+                                    throw "ተወዳዳሪው አልተገኘም!";
+                                }
+
+                                const newVotes = (conDoc.data().votes || 0) + 1;
+                                transaction.update(contestantRef, { votes: newVotes });
+                                transaction.set(voterRef, {
+                                    username: voterName,
+                                    password: voterPhone,
+                                    votedForId: selectedContestantId,
+                                    votedForName: conDoc.data().name,
+                                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            });
+                        }).then(() => {
+                            showToast("🎉 ድምጽዎ በተሳካ ሁኔታ ተመዝግቧል! እናመሰግናለን።", "success");
+                            resetVoteForm();
+                        }).catch((err) => {
+                            console.error(err);
+                            showToast("ድምጽ በሚሰጥበት ጊዜ ስህተት አጋጥሟል!", "error");
+                        });
+                    }
+                });
+
+            } else {
+                // በሙከራ ሁነታ ድምጽ መስጠት (Local Storage)
+                const savedDemoVoters = localStorage.getItem("demo_voters");
+                let voters = savedDemoVoters ? JSON.parse(savedDemoVoters) : [];
+
+                const duplicate = voters.find(v => v.username === voterName);
+                if (duplicate) {
+                    showToast("ይህ የተጠቃሚ ስም ቀደም ብሎ ድምጽ ሰጥቷል! (Demo Mode)", "error");
+                    return;
+                }
+
+                const selectedC = demoContestants.find(c => c.id === selectedContestantId);
+                selectedC.votes += 1;
+
+                voters.push({
+                    username: voterName,
+                    password: voterPhone,
+                    votedForId: selectedContestantId,
+                    votedForName: selectedC.name
+                });
+
+                localStorage.setItem("demo_contestants", JSON.stringify(demoContestants));
+                localStorage.setItem("demo_voters", JSON.stringify(voters));
+
+                showToast("🎉 ድምጽዎ በሙከራ ሁነታ ተመዝግቧል!", "success");
+                resetVoteForm();
+                loadContestants();
+            }
+        }
+
+        function resetVoteForm() {
+            document.getElementById("voterName").value = "";
+            document.getElementById("voterPhone").value = "";
+            clearSelection();
+        }
+
+        // ==========================================
+        // የአስተዳዳሪ ገጽ (ADMIN PANEL LOGIC)
+        // ==========================================
+        function openAdminModal() {
+            document.getElementById("adminModal").classList.remove("hidden");
+            document.getElementById("adminAuthScreen").classList.remove("hidden");
+            document.getElementById("adminContentScreen").classList.add("hidden");
+            document.getElementById("adminPassword").value = "";
+        }
+
+        function closeAdminModal() {
+            document.getElementById("adminModal").classList.add("hidden");
+        }
+
+        function checkAdminPassword() {
+            const pw = document.getElementById("adminPassword").value;
+            if (pw === "admin123") {
+                document.getElementById("adminAuthScreen").classList.add("hidden");
+                document.getElementById("adminContentScreen").classList.remove("hidden");
+                loadAdminDashboardData();
+            } else {
+                showToast("የይለፍ ቃል የተሳሳተ ነው! እባክዎ እንደገና ይሞክሩ።", "error");
+            }
+        }
+
+        function loadAdminDashboardData() {
+            if (isFirebaseLive) {
+                db.collection("contestants").orderBy("name").get().then((snapshot) => {
+                    let i = 1;
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        document.getElementById(`c${i}_name`).value = data.name || "";
+                        document.getElementById(`c${i}_img`).value = data.imageUrl || "";
+                        document.getElementById(`c${i}_name`).setAttribute("data-id", doc.id);
+                        i++;
+                    });
+                });
+
+                // የመራጮች ዝርዝር (Username + Password)
+                db.collection("voters").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                    const table = document.getElementById("voterLogsTable");
+                    table.innerHTML = "";
+                    snapshot.forEach((doc) => {
+                        const d = doc.data();
+                        const tr = document.createElement("tr");
+                        tr.className = "border-b border-gray-100 hover:bg-gray-50";
+                        tr.innerHTML = `
+                            <td class="p-3 font-semibold text-slate-700">${d.username || d.name || 'ያልታወቀ'}</td>
+                            <td class="p-3 text-slate-500">${d.password || d.phone || '---'}</td>
+                            <td class="p-3 text-blue-600 font-bold">${d.votedForName || 'የማይታወቅ'}</td>
+                        `;
+                        table.appendChild(tr);
+                    });
+                });
+            } else {
+                for (let i = 1; i <= 3; i++) {
+                    const c = demoContestants[i - 1];
+                    document.getElementById(`c${i}_name`).value = c.name;
+                    document.getElementById(`c${i}_img`).value = c.imageUrl;
+                }
+
+                const savedDemoVoters = localStorage.getItem("demo_voters");
+                const voters = savedDemoVoters ? JSON.parse(savedDemoVoters) : [];
+                const table = document.getElementById("voterLogsTable");
+                table.innerHTML = "";
+                voters.reverse().forEach((v) => {
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-gray-100 hover:bg-gray-50";
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-700">${v.username || 'ያልታወቀ'}</td>
+                        <td class="p-3 text-slate-500">${v.password || '---'}</td>
+                        <td class="p-3 text-blue-600 font-bold">${v.votedForName}</td>
+                    `;
+                    table.appendChild(tr);
+                });
+            }
+        }
+
+        // የተወዳዳሪዎች መረጃ ሴቭ ማድረግ
+        function saveContestants() {
+            if (isFirebaseLive) {
+                const batch = db.batch();
+                for (let i = 1; i <= 3; i++) {
+                    const id = document.getElementById(`c${i}_name`).getAttribute("data-id");
+                    const name = document.getElementById(`c${i}_name`).value.trim();
+                    const imageUrl = document.getElementById(`c${i}_img`).value.trim();
+
+                    if (id && name && imageUrl) {
+                        const docRef = db.collection("contestants").doc(id);
+                        batch.update(docRef, { name: name, imageUrl: imageUrl });
+                    }
+                }
+                batch.commit().then(() => {
+                    showToast("የተወዳዳሪዎች መረጃ በተሳካ ሁኔታ ተቀይሯል!", "success");
+                    loadContestants();
+                }).catch((err) => {
+                    showToast("መረጃዎችን ማስቀመጥ አልተቻለም!", "error");
+                });
+            } else {
+                for (let i = 1; i <= 3; i++) {
+                    demoContestants[i - 1].name = document.get 
